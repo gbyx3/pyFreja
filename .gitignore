@@ -1,3 +1,10 @@
+# Freja SSL Certificate
+ssl/*
+!ssl/README.md
+
+# Settings
+settings.py
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
