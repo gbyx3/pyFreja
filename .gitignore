@@ -4,6 +4,7 @@ ssl/*
 
 # Settings
 settings.py
+*.log
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
