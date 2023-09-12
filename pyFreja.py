@@ -20,7 +20,7 @@ def make_request(url, payload, method="POST"):
     return requests.request(method, url, data=payload, verify=settings.CA_cert, cert=(settings.user_cert, settings.user_key))
 
 
-def getOneAuthResultRequest(auth_ref):
+def get_one_auth_result_request(auth_ref):
     payload = {}
     payload["authRef"] = auth_ref
     payload = b64_encode(json.dumps(payload))
@@ -29,7 +29,7 @@ def getOneAuthResultRequest(auth_ref):
         {"getOneAuthResultRequest": payload})
 
 
-def initAuthRequest(user_info_type, user_info):
+def init_auth_request(user_info_type, user_info):
     payload = {}
     if user_info_type == "email":
         if not validate_email(user_info):
@@ -65,7 +65,7 @@ if __name__ == "__main__":
         print("Usage: python3 pyFreja.py")
         sys.exit(1)
     email = args[1]
-    auth = initAuthRequest("EMAIL", email).json()
+    auth = init_auth_request("EMAIL", email).json()
     try:
         authRef = auth["authRef"]
     except KeyError:
@@ -76,12 +76,12 @@ if __name__ == "__main__":
         sys.exit(1)
 
 
-    authResult = getOneAuthResultRequest(authRef).json()
+    authResult = get_one_auth_result_request(authRef).json()
     while authResult["status"] == "STARTED":
-        authResult = getOneAuthResultRequest(authRef).json()
+        authResult = get_one_auth_result_request(authRef).json()
         time.sleep(1)
     while authResult["status"] == "DELIVERED_TO_MOBILE":
-        authResult = getOneAuthResultRequest(authRef).json()
+        authResult = get_one_auth_result_request(authRef).json()
         time.sleep(1)
     print(json.dumps(authResult, indent=4, sort_keys=True))
 
