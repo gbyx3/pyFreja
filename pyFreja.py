@@ -12,24 +12,48 @@ import re
 import time
 import logging
 import sys
+import urllib.parse
+
+session = requests.Session()
+session.verify = settings.CA_cert
+session.cert = (settings.user_cert, settings.user_key)
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s', filename='./pyFreja.log')
 
 
-def make_request(url, payload, method="POST"):
-    return requests.request(method, url, data=payload, verify=settings.CA_cert, cert=(settings.user_cert, settings.user_key))
+def b64_encode(payload):
+    """
+    Base64 encodes a string.
+    """
+    return base64.b64encode(payload.encode("utf-8"))
+
+
+def validate_email(email):
+    """
+    Validates an email address.
+    """
+    if re.match(r"[^@]+@[^@]+\.[^@]+", email):
+        return True
+    else:
+        return False
 
 
 def get_one_auth_result_request(auth_ref):
+    """
+    Gets the result of an authentication request.
+    """
     payload = {}
     payload["authRef"] = auth_ref
     payload = b64_encode(json.dumps(payload))
-    return make_request(
+    return session.post(
         f"https://{settings.url}/authentication/{settings.freja_api_version}/getOneResult",
         {"getOneAuthResultRequest": payload})
 
 
 def init_auth_request(user_info_type, user_info):
+    """
+    Initializes an authentication request.
+    """
     payload = {}
     if user_info_type == "email":
         if not validate_email(user_info):
@@ -43,46 +67,64 @@ def init_auth_request(user_info_type, user_info):
     payload["attributesToReturn"] = attributes
     payload = b64_encode(json.dumps(payload))
 
-    return make_request(
+    return session.post(
         f"https://{settings.url}/authentication/{settings.freja_api_version}/initAuthentication",
         {"initAuthRequest": payload.decode("utf-8")})
 
 
-def b64_encode(payload):
-    return base64.b64encode(payload.encode("utf-8"))
+def init_sign_request(user_info_type, 
+                      user_info, 
+                      data_to_sign,
+                      title="Sign transaction",
+                      min_registration_level="EXTENDED",
+                      expiry=False):
+    """
+    Initializes a signing request.
+    """
+    payload = {}
+    if user_info_type == "email":
+        if not validate_email(user_info):
+            raise ValueError("Invalid email format.")
+            returnA
+    if expiry:
+        payload["expiry"] = expiry
+
+    payload["userInfoType"] = user_info_type
+    payload["userInfo"] = user_info
+    payload["minRegistrationLevel"] = min_registration_level
+    payload["title"] = title
+    payload["dataToSignType"] = "SIMPLE_UTF8_TEXT"
+    payload["dataToSign"] = {"text": data_to_sign}
+    payload["signatureType"] = "SIMPLE"
+    attributes = [{"attribute":"BASIC_USER_INFO"}]
+    payload["attributesToReturn"] = attributes
+    payload = b64_encode(json.dumps(payload))
+
+    return session.post(
+        f"https://{settings.url}/sign/{settings.freja_api_version}/initSignature",
+        {"initSignRequest": payload.decode("utf-8")})
 
 
-def validate_email(email):
-    if re.match(r"[^@]+@[^@]+\.[^@]+", email):
-        return True
-    else:
-        return False
+def get_qr_code(signing_ref):
+    """
+    Fetch the QR code
+    """
+    payload = f"frejaeid://bindUserToTransaction?transactionReference={signing_ref}"
+    params = {"qrcodedata": urllib.parse.quote(payload)}
+
+    return requests.get(
+        "https://resources.test.frejaeid.com/qrcode/generate",
+        params=params)
+
+
+def generate_qr():
+    auth_ref = init_auth_request("INFERRED", "N/A").json()["authRef"]
+    print(auth_ref)
+    signing_ref = init_sign_request("INFERRED", "N/A", auth_ref).json()
+    print(signing_ref)
+    qr = get_qr_code(signing_ref["signRef"])
+    print(qr.url)
+
 
 if __name__ == "__main__":
-    import argparse
-    args = sys.argv
-    if len(args) != 2:
-        print("Usage: python3 pyFreja.py")
-        sys.exit(1)
-    email = args[1]
-    auth = init_auth_request("EMAIL", email).json()
-    try:
-        authRef = auth["authRef"]
-    except KeyError:
-        print(f"Error: {auth['code']} - {auth['message']}")
-        sys.exit(2)
-    except Exception as e:
-        print(f"Unknown Error: {e}")
-        sys.exit(1)
-
-
-    authResult = get_one_auth_result_request(authRef).json()
-    while authResult["status"] == "STARTED":
-        authResult = get_one_auth_result_request(authRef).json()
-        time.sleep(1)
-    while authResult["status"] == "DELIVERED_TO_MOBILE":
-        authResult = get_one_auth_result_request(authRef).json()
-        time.sleep(1)
-    print(json.dumps(authResult, indent=4, sort_keys=True))
-
-
+    generate_qr()
