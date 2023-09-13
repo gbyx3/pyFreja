@@ -1,2 +1,2 @@
 # pyFreja
-Python implementation of Freja eID
+Python implementation for Freja eID
