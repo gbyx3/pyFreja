@@ -38,6 +38,15 @@ def validate_email(email):
         return False
 
 
+def get_auth_result_request():
+    payload = {}
+    payload["includePrevious"] = "ALL"
+    payload = b64_encode(json.dumps(payload))
+    return session.post(
+        f"https://{settings.url}/authentication/{settings.freja_api_version}/getResults",
+        {"getAuthResultsRequest": payload})
+
+
 def get_one_auth_result_request(auth_ref):
     """
     Gets the result of an authentication request.
