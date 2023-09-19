@@ -59,7 +59,11 @@ def get_one_auth_result_request(auth_ref):
         {"getOneAuthResultRequest": payload})
 
 
-def init_auth_request(user_info_type, user_info):
+def init_auth_request(user_info_type,
+                      user_info,
+                      min_registration_level="BASIC",
+                      attributes=["ALL_EMAIL_ADDRESSES"]
+                      ):
     """
     Initializes an authentication request.
     """
@@ -71,8 +75,9 @@ def init_auth_request(user_info_type, user_info):
 
     payload["userInfoType"] = user_info_type
     payload["userInfo"] = user_info
-    payload["minRegistrationLevel"] = "EXTENDED"
-    attributes = ["BASIC_USER_INFO", "DATE_OF_BIRTH", "REGISTRATION_LEVEL", "SSN", "AGE", "PHOTO", "COVID_CERTIFICATES"]
+    payload["minRegistrationLevel"] = min_registration_level
+    #attributes = ["ALL_EMAIL_ADDRESSES", "REGISTRATION_LEVEL"]
+    attributes = attributes
     payload["attributesToReturn"] = attributes
     payload = b64_encode(json.dumps(payload))
 
